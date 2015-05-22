@@ -205,7 +205,7 @@ public:
         }
 
         _serial->println((sizeof(*value)*size));
-
+        /*
         c = timedPeek(20);
 
         if (c == -1)
@@ -215,7 +215,15 @@ public:
             return readStatus(_timeout);
 
         _serial->write((byte*)value, (sizeof(*value)*size));
-
+        */
+        if (recvFind(">", 5000)) {
+            while(_serial->available() > 0) {
+                _serial->read();
+            }
+            _serial->write((byte*)value, (sizeof(*value)*size));
+            recvFind("SEND OK", 10000);
+            return ESP8266_COMMAND_OK;
+        }
         return readStatus(_timeout);
     }
 
@@ -233,7 +241,7 @@ public:
         }
 
         _serial->println(sizeof(value));
-
+        /*
         c = timedPeek(20);
 
         if (c == -1)
@@ -243,8 +251,44 @@ public:
             return readStatus(_timeout);
 
         _serial->write((byte*)&value, sizeof(value));
-
+        */
+        if (recvFind(">", 5000)) {
+            while(_serial->available() > 0) {
+                _serial->read();
+            }
+            _serial->write((byte*)&value, sizeof(value));
+            recvFind("SEND OK", 10000);
+            return ESP8266_COMMAND_OK;
+        }
         return readStatus(_timeout);
+    }
+
+    bool recvFind(String target, uint32_t timeout)
+    {
+        String data_tmp;
+        data_tmp = recvString(target, timeout);
+        if (data_tmp.indexOf(target) != -1) {
+            return true;
+        }
+        return false;
+    }
+
+    String recvString(String target, uint32_t timeout)
+    {
+        String data;
+        char a;
+        unsigned long start = millis();
+        while (millis() - start < timeout) {
+            while(_serial->available() > 0) {
+                a = _serial->read();
+                if(a == '\0') continue;
+                data += a;
+            }
+            if (data.indexOf(target) != -1) {
+                break;
+            }
+        }
+        return data;
     }
 
     // Close connection
